@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ATS-MINI Radio Control</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&family=Orbitron:wght@400;700&display=swap">
+    <style>
+        /* CSS Variables for easy theme modification */
+        :root {
+            --bg-color: #1a1a1d;
+            --container-bg: #222;
+            --container-border: #333;
+            --display-bg: #0d0d10;
+            --text-color: #eee;
+            --neon-green: #0aff0a;
+            --neon-red: #ff3333;
+            --knob-marker-color: #ff5555;
+            --knob-bg-top: #3c3e44;
+            --knob-bg-bottom: #1c1d21;
+            --btn-bg: #3c3e44;
+            --btn-border: #555;
+            --btn-hover: #505258;
+            --active-light: #0aff0a;
+            --inactive-light: #ff3333;
+        }
+
+        body {
+            font-family: 'Roboto Mono', monospace;
+            background: linear-gradient(135deg, var(--bg-color), #0a0a0c);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            user-select: none;
+            touch-action: pan-y; /* Prevents touch scrolling while dragging knob */
+        }
+
+        .radio-container {
+            background-color: var(--container-bg);
+            border: 3px solid var(--container-border);
+            border-radius: 20px;
+            padding: 25px;
+            width: 95vw;
+            max-width: 600px;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.7), inset 0 0 10px rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            position: relative;
+        }
+
+        .radio-container::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            border-radius: 22px;
+            background: linear-gradient(45deg, var(--neon-green), var(--neon-red));
+            z-index: -1;
+            opacity: 0.2;
+            filter: blur(8px);
+        }
+
+        .display-screen {
+            background-color: var(--display-bg);
+            border: 2px solid #555;
+            border-radius: 12px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
+            overflow: hidden;
+        }
+
+        .display-screen::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                repeating-linear-gradient(
+                    0deg, 
+                    rgba(0,0,0,0.1), 
+                    rgba(0,0,0,0.1) 1px, 
+                    transparent 1px, 
+                    transparent 3px
+                );
+            pointer-events: none;
+        }
+
+        #frequency-display {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 3.5em;
+            color: var(--neon-green);
+            text-shadow: 0 0 15px var(--neon-green), 0 0 5px var(--neon-green);
+            line-height: 1.2;
+            padding: 5px;
+            text-align: center;
+            min-height: 1.2em;
+        }
+
+        .details-bar {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8em;
+            color: #aaa;
+            padding-top: 5px;
+            border-top: 1px dashed #444;
+            margin-top: 5px;
+            flex-wrap: wrap; /* Allows wrapping on smaller screens */
+            gap: 5px;
+        }
+
+        .details-item {
+            text-align: center;
+            flex: 1 1 20%; /* Distributes space more evenly */
+            padding: 2px 0px;
+            white-space: nowrap;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .vfo-knob {
+            background: linear-gradient(180deg, var(--knob-bg-top), var(--knob-bg-bottom));
+            border: 2px solid var(--container-border);
+            border-radius: 50%;
+            width: 150px;
+            height: 150px;
+            margin: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            cursor: grab;
+            box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.7), 0 5px 15px rgba(0, 0, 0, 0.5);
+            transition: transform 0.05s ease-out; 
+        }
+        
+        .vfo-knob:active {
+            cursor: grabbing;
+        }
+
+        .knob-marker {
+            background-color: var(--knob-marker-color);
+            width: 15px;
+            height: 5px;
+            border-radius: 2px;
+            position: absolute;
+            top: 10px;
+            transform-origin: center 65px; /* Center rotation around the knob center */
+            box-shadow: 0 0 10px var(--knob-marker-color);
+            transition: transform 0.1s linear; 
+        }
+
+        .buttons-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            align-self: center;
+            justify-content: center;
+        }
+        
+        .control-buttons-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .btn {
+            background: var(--btn-bg);
+            color: var(--text-color);
+            border: 1px solid var(--btn-border);
+            border-radius: 8px;
+            padding: 12px;
+            font-family: inherit;
+            font-weight: bold;
+            font-size: 1em;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+        }
+        
+        .btn:hover {
+            background: var(--btn-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0,0,0,0.4);
+        }
+        
+        .btn:active {
+            background: #666;
+            transform: translateY(1px);
+            box-shadow: 0 2px 3px rgba(0,0,0,0.5);
+        }
+        
+        .volume-buttons, .misc-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .status-light {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: var(--inactive-light);
+            box-shadow: 0 0 8px var(--inactive-light);
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            transition: background-color 0.5s, box-shadow 0.5s;
+        }
+
+        .status-light.active {
+            background-color: var(--active-light);
+            box-shadow: 0 0 8px var(--active-light);
+        }
+
+        /* Responsive Styles */
+        @media (max-width: 600px) {
+            .radio-container {
+                width: 90vw;
+                padding: 15px;
+                gap: 15px;
+            }
+            .controls {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+            .vfo-knob {
+                width: 120px;
+                height: 120px;
+            }
+            .buttons-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            .volume-buttons, .misc-buttons {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .btn {
+                font-size: 0.9em;
+                padding: 8px;
+            }
+            #frequency-display {
+                font-size: 2.5em;
+            }
+            .details-bar {
+                font-size: 0.75em;
+                justify-content: space-around;
+            }
+            .details-item {
+                flex-basis: auto; /* Re-adjust basis for smaller screens */
+                padding: 2px 1px;
+            }
+            .knob-marker {
+                transform-origin: center 55px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="radio-container">
+        <div class="display-screen">
+            <span id="frequency-display">Loading...</span>
+            <div class="status-light" id="status-light"></div>
+            <div class="details-bar">
+                <span class="details-item" id="band-display">BAND:N/A</span>
+                <span class="details-item" id="mode-display">MODE:N/A</span>
+                <span class="details-item" id="rssi-display">RSSI:N/A</span>
+                <span class="details-item" id="snr-display">SNR:N/A</span>
+                <span class="details-item" id="volume-display">VOL:N/A</span>
+                <span class="details-item" id="step-display">STEP:N/A</span>
+                <span class="details-item" id="bw-display">BW:N/A</span>
+                <span class="details-item" id="agc-att-display">AGC/ATT:N/A</span>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="vfo-knob-container">
+                <div class="vfo-knob" id="vfo-knob">
+                    <div class="knob-marker" id="knob-marker"></div>
+                </div>
+            </div>
+            <div class="control-buttons-container">
+                <div class="buttons-grid">
+                    <button class="btn" data-cmd="B">Band+</button>
+                    <button class="btn" data-cmd="b">Band-</button>
+                    <button class="btn" data-cmd="M">Mode+</button>
+                    <button class="btn" data-cmd="m">Mode-</button>
+                    <button class="btn" data-cmd="S">Step+</button>
+                    <button class="btn" data-cmd="s">Step-</button>
+                    <button class="btn" data-cmd="W">BW+</button>
+                    <button class="btn" data-cmd="w">BW-</button>
+                    <button class="btn" data-cmd="A">AGC+</button>
+                    <button class="btn" data-cmd="a">AGC-</button>
+                    <button class="btn" data-cmd="L">Light+</button>
+                    <button class="btn" data-cmd="l">Light-</button>
+                </div>
+                <div class="volume-buttons">
+                    <button class="btn" data-cmd="V">Volume+</button>
+                    <button class="btn" data-cmd="v">Volume-</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const freqDisplay = document.getElementById('frequency-display');
+            const bandDisplay = document.getElementById('band-display');
+            const modeDisplay = document.getElementById('mode-display');
+            const rssiDisplay = document.getElementById('rssi-display');
+            const snrDisplay = document.getElementById('snr-display');
+            const volumeDisplay = document.getElementById('volume-display');
+            const stepDisplay = document.getElementById('step-display');
+            const bwDisplay = document.getElementById('bw-display');
+            const agcAttDisplay = document.getElementById('agc-att-display');
+            const statusLight = document.getElementById('status-light');
+            const vfoKnob = document.getElementById('vfo-knob');
+            const knobMarker = document.getElementById('knob-marker');
+            const commandButtons = document.querySelectorAll('.btn[data-cmd]');
+
+            let isDragging = false;
+            let lastY = 0;
+            let rotationAccumulator = 0;
+            let currentKnobRotation = 0;
+            let currentStepValue = 1000;
+            const KNOB_SENSITIVITY_THRESHOLD = 15;
+            const maxFreqForMarkerVisuals = 300000000;
+
+            function parseStep(stepStr) {
+                if (typeof stepStr !== 'string' || stepStr.length === 0) return 1000;
+                const lower = stepStr.toLowerCase();
+                const num = parseFloat(lower);
+                if (isNaN(num)) return 1000;
+                if (lower.endsWith('k')) return num * 1000;
+                if (lower.endsWith('m')) return num * 1000000;
+                return num;
+            }
+            
+            function getVisualStepAngle(stepValue) {
+                if (stepValue <= 100) return 2;
+                if (stepValue <= 1000) return 5;
+                if (stepValue <= 5000) return 10;
+                return 15;
+            }
+
+            function tuneUp() {
+                sendCommand('R');
+                const visualStepAngle = getVisualStepAngle(currentStepValue);
+                currentKnobRotation += visualStepAngle;
+                vfoKnob.style.transform = `rotate(${currentKnobRotation}deg)`;
+            }
+
+            function tuneDown() {
+                sendCommand('r');
+                const visualStepAngle = getVisualStepAngle(currentStepValue);
+                currentKnobRotation -= visualStepAngle;
+                vfoKnob.style.transform = `rotate(${currentKnobRotation}deg)`;
+            }
+
+            /* --- MOUSE EVENTS for VFO Knob --- */
+            vfoKnob.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                lastY = e.clientY;
+                rotationAccumulator = 0;
+                vfoKnob.style.cursor = 'grabbing';
+                vfoKnob.style.transition = 'none';
+                e.preventDefault();
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (!isDragging) return;
+                isDragging = false;
+                vfoKnob.style.cursor = 'grab';
+                vfoKnob.style.transition = 'transform 0.05s ease-out';
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const deltaY = lastY - e.clientY;
+                lastY = e.clientY;
+                rotationAccumulator += deltaY;
+                while (rotationAccumulator >= KNOB_SENSITIVITY_THRESHOLD) {
+                    tuneUp();
+                    rotationAccumulator -= KNOB_SENSITIVITY_THRESHOLD;
+                }
+                while (rotationAccumulator <= -KNOB_SENSITIVITY_THRESHOLD) {
+                    tuneDown();
+                    rotationAccumulator += KNOB_SENSITIVITY_THRESHOLD;
+                }
+            });
+            
+            vfoKnob.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                if (e.deltaY < 0) {
+                    tuneUp();
+                } else {
+                    tuneDown();
+                }
+            });
+
+            /* --- TOUCH EVENTS for VFO Knob on mobile --- */
+            vfoKnob.addEventListener('touchstart', (e) => {
+                isDragging = true;
+                lastY = e.touches[0].clientY;
+                rotationAccumulator = 0;
+                vfoKnob.style.transition = 'none';
+                e.preventDefault();
+            });
+
+            vfoKnob.addEventListener('touchend', () => {
+                if (!isDragging) return;
+                isDragging = false;
+                vfoKnob.style.transition = 'transform 0.05s ease-out';
+            });
+
+            vfoKnob.addEventListener('touchmove', (e) => {
+                if (!isDragging) return;
+                const deltaY = lastY - e.touches[0].clientY;
+                lastY = e.touches[0].clientY;
+                rotationAccumulator += deltaY;
+                while (rotationAccumulator >= KNOB_SENSITIVITY_THRESHOLD) {
+                    tuneUp();
+                    rotationAccumulator -= KNOB_SENSITIVITY_THRESHOLD;
+                }
+                while (rotationAccumulator <= -KNOB_SENSITIVITY_THRESHOLD) {
+                    tuneDown();
+                    rotationAccumulator += KNOB_SENSITIVITY_THRESHOLD;
+                }
+            });
+
+
+            commandButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const cmd = button.getAttribute('data-cmd');
+                    sendCommand(cmd);
+                });
+            });
+
+            async function sendCommand(cmd) {
+                try {
+                    fetch('/api/command', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ cmd: cmd }),
+                    });
+                } catch (error) {
+                    console.error('Error sending command:', error);
+                }
+            }
+            
+            async function fetchMonitorData() {
+                try {
+                    const response = await fetch('/api/monitor');
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    const data = await response.json();
+                    
+                    if (data.monitor_active) {
+                        statusLight.classList.add('active');
+                        const p = data.parsed;
+
+                        // Handle VHF frequency display fix
+                        let displayFrequency = p.frequency;
+                        if (p.bandName === 'VHF' && p.frequency) {
+                            const freqNum = parseFloat(p.frequency);
+                            if (!isNaN(freqNum) && freqNum < 30) { 
+                                const correctedFreq = freqNum * 10;
+                                displayFrequency = `${correctedFreq.toFixed(1)} MHz`;
+                            }
+                        }
+                        
+                        freqDisplay.textContent = displayFrequency || 'N/A';
+                        bandDisplay.textContent = `BAND:${p.bandName || 'N/A'}`;
+                        modeDisplay.textContent = `MODE:${p.mode || 'N/A'}`;
+                        rssiDisplay.textContent = `RSSI:${p.rssi || 'N/A'}`;
+                        snrDisplay.textContent = `SNR:${p.snr || 'N/A'}`;
+                        volumeDisplay.textContent = `VOL:${p.volume !== null ? p.volume : 'N/A'}`;
+                        
+                        if (p.stepIdx) {
+                            currentStepValue = parseStep(p.stepIdx);
+                            stepDisplay.textContent = `STEP:${p.stepIdx}`;
+                        } else {
+                            stepDisplay.textContent = 'STEP:N/A';
+                        }
+                        
+                        bwDisplay.textContent = `BW:${p.bandwidthIdx || 'N/A'}`;
+
+                        // Handle AGC/ATT display
+                        if (p.agcIdx) {
+                            const agcValue = parseInt(p.agcIdx, 10);
+                            if (agcValue === 0) {
+                                agcAttDisplay.textContent = 'AGC:ON';
+                            } else {
+                                agcAttDisplay.textContent = `ATT:${agcValue - 1}`;
+                            }
+                        } else {
+                            agcAttDisplay.textContent = 'AGC/ATT:N/A';
+                        }
+
+                        if (p.currentFrequency_raw) {
+                            const currentFreq = p.currentFrequency_raw;
+                            const newMarkerRotation = (currentFreq / maxFreqForMarkerVisuals) * 360 * 10; 
+                            knobMarker.style.transform = `rotate(${newMarkerRotation}deg)`;
+                        }
+                    } else {
+                        statusLight.classList.remove('active');
+                        freqDisplay.textContent = 'Monitor Off';
+                        bandDisplay.textContent = 'BAND:N/A';
+                        modeDisplay.textContent = 'MODE:N/A';
+                        rssiDisplay.textContent = 'RSSI:N/A';
+                        snrDisplay.textContent = 'SNR:N/A';
+                        volumeDisplay.textContent = 'VOL:N/A';
+                        stepDisplay.textContent = 'STEP:N/A';
+                        bwDisplay.textContent = 'BW:N/A';
+                        agcAttDisplay.textContent = 'AGC/ATT:N/A';
+                    }
+
+                } catch (error) {
+                    console.error('Error fetching monitor data:', error);
+                    statusLight.classList.remove('active');
+                    freqDisplay.textContent = 'Connection Error';
+                    bandDisplay.textContent = 'BAND:N/A';
+                    modeDisplay.textContent = 'MODE:N/A';
+                    rssiDisplay.textContent = 'RSSI:N/A';
+                    snrDisplay.textContent = 'SNR:N/A';
+                    volumeDisplay.textContent = 'VOL:N/A';
+                    stepDisplay.textContent = 'STEP:N/A';
+                    bwDisplay.textContent = 'BW:N/A';
+                    agcAttDisplay.textContent = 'AGC/ATT:N/A';
+                }
+            }
+
+            sendCommand('t');
+            setInterval(fetchMonitorData, 200);
+            fetchMonitorData();
+        });
+    </script>
+</body>
+</html>

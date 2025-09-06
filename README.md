@@ -51,3 +51,8 @@ A web-based remote control for the ATS-MINI portable shortwave radio receiver. T
 
 * `backend.py`: The Flask server that handles serial communication with the radio and serves the web interface.
 * `templates/index.html`: The complete frontend file, containing the UI structure, styling, and all of the JavaScript logic.
+
+ 
+ ###  TODO
+
+* **Audio Streaming:** Tunnel the receiver's audio output into the web interface. (AUX Socket)

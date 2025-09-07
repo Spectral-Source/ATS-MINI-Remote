@@ -7,7 +7,7 @@ import serial
 import serial.tools.list_ports
 
 # === Config ===
-DEFAULT_BAUD = 112500
+DEFAULT_BAUD = 115200
 FALLBACK_BAUD = 9600
 SERIAL_TIMEOUT = 0.1
 
@@ -294,4 +294,5 @@ def main():
     app.run(host=args.host, port=args.http_port, debug=False)
 
 if __name__ == "__main__":
+
     main()

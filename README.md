@@ -57,4 +57,4 @@ A web-based remote control for the ATS-MINI portable shortwave radio receiver. T
 
 * **Audio Streaming:** Tunnel the receiver's audio output into the web interface. (AUX Socket)
 
-#### Tested On FW v2.30 [esp32-si4732/ats-mini](https://github.com/esp32-si4732/ats-mini)
+#### Tested On FW v2.33 [esp32-si4732/ats-mini](https://github.com/esp32-si4732/ats-mini)

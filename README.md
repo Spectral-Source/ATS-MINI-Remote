@@ -3,8 +3,7 @@
 A web-based remote control for the ATS-MINI portable shortwave radio receiver. This project uses a Flask backend and a responsive web interface to let you control your radio from any device on your local network, including a PC or a mobile phone.
 
 
-
-<img width="841" height="586" alt="image" src="https://github.com/user-attachments/assets/03178d70-252d-4325-ae72-16a1c75ca535" />
+<img width="840" height="600" alt="image" src="https://github.com/user-attachments/assets/f719836c-2e38-4b86-a05d-2d27f5ee3fc1" />
 
 ---
 

@@ -118,13 +118,13 @@
             padding-top: 5px;
             border-top: 1px dashed #444;
             margin-top: 5px;
-            flex-wrap: wrap; /* Allows wrapping on smaller screens */
+            flex-wrap: wrap;
             gap: 5px;
         }
 
         .details-item {
             text-align: center;
-            flex: 1 1 20%; /* Distributes space more evenly */
+            flex: 1 1 20%;
             padding: 2px 0px;
             white-space: nowrap;
         }
@@ -162,9 +162,29 @@
             border-radius: 2px;
             position: absolute;
             top: 10px;
-            transform-origin: center 65px; /* Center rotation around the knob center */
+            transform-origin: center 65px;
             box-shadow: 0 0 10px var(--knob-marker-color);
             transition: transform 0.1s linear; 
+        }
+
+        /* VFO Buttons Mode Container */
+        .vfo-buttons-container {
+            display: none; /* Hidden by default */
+            flex-direction: row;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            height: 150px;
+        }
+
+        .vfo-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            font-size: 2em;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
         .buttons-grid {
@@ -192,7 +212,7 @@
             font-size: 1em;
             cursor: pointer;
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+            transition: background 0.2s, transform 0.1s, box-shadow 0.2s, border-color 0.2s;
         }
         
         .btn:hover {
@@ -207,10 +227,20 @@
             box-shadow: 0 2px 3px rgba(0,0,0,0.5);
         }
         
-        .volume-buttons, .misc-buttons {
+        .volume-buttons {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(3, 1fr); /* 3 עמודות כדי להכניס את כפתור ה-SET */
             gap: 10px;
+        }
+
+        /* עיצוב ייעודי לכפתור ההגדרות */
+        #open-settings-btn {
+            color: var(--text-color);
+            border-color: var(--btn-border);
+        }
+        #open-settings-btn:hover {
+            border-color: var(--btn-border);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
         }
 
         .status-light {
@@ -230,7 +260,164 @@
             box-shadow: 0 0 8px var(--active-light);
         }
 
-        /* Responsive Styles */
+        /* Settings Modal Styles - מראה של תפריט מערכת משובץ */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-card {
+            background: #111;
+            border: 2px solid var(--btn-border);
+            border-radius: 10px;
+            padding: 20px;
+            width: 90%;
+            max-width: 350px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
+
+        .modal-card h3 {
+            margin-top: 0;
+            color: var(--text-color);
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 1px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+
+        .setting-group {
+            margin: 20px 0;
+            text-align: left;
+        }
+
+        .setting-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #aaa;
+            font-size: 0.9em;
+        }
+
+        .setting-group select {
+            width: 100%;
+            background: var(--display-bg);
+            color: var(--text-color);
+            border: 1px solid var(--btn-border);
+            padding: 10px;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 1em;
+            outline: none;
+        }
+        
+        .setting-group select:focus {
+            border-color: var(--btn-border);
+        }
+
+        /* Direct Frequency Input Styles */
+        .direct-freq-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 5px;
+        }
+
+        #direct-freq-input {
+            flex-grow: 1;
+            background: var(--display-bg);
+            color: var(--neon-green);
+            border: 1px solid var(--btn-border);
+            border-radius: 8px;
+            padding: 10px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.1em;
+            text-align: center;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.8);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        #direct-freq-input::placeholder {
+            color: #444;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 0.8em;
+        }
+
+        #direct-freq-input:focus {
+            outline: none;
+            border-color: var(--neon-green);
+            box-shadow: 0 0 8px rgba(10, 255, 10, 0.2), inset 0 0 5px rgba(0,0,0,0.8);
+        }
+
+        .freq-error-message {
+            display: none;
+            background-color: rgba(255, 51, 51, 0.1);
+            border: 1px solid var(--neon-red);
+            border-radius: 6px;
+            padding: 10px;
+            margin-top: -5px;
+            margin-bottom: 10px;
+            color: var(--neon-red);
+            font-size: 0.85em;
+            animation: slideDown 0.3s ease-out;
+            position: relative;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .freq-error-message.show {
+            display: flex;
+        }
+
+        .freq-error-close-btn {
+            background: none;
+            border: none;
+            color: var(--neon-red);
+            font-size: 1.2em;
+            cursor: pointer;
+            padding: 0;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: opacity 0.2s;
+        }
+
+        .freq-error-close-btn:hover {
+            opacity: 0.7;
+        }
+
+        .freq-error-text {
+            flex-grow: 1;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        #btn-set-freq {
+            font-family: 'Orbitron', sans-serif;
+            color: var(--neon-green);
+            border-color: var(--btn-border);
+        }
+
         @media (max-width: 600px) {
             .radio-container {
                 width: 90vw;
@@ -245,11 +432,11 @@
                 width: 120px;
                 height: 120px;
             }
-            .buttons-grid {
-                grid-template-columns: repeat(3, 1fr);
+            .vfo-buttons-container {
+                height: 120px;
             }
-            .volume-buttons, .misc-buttons {
-                grid-template-columns: repeat(2, 1fr);
+            .buttons-grid {
+                grid-template-columns: repeat(4, 1fr);
             }
             .btn {
                 font-size: 0.9em;
@@ -258,19 +445,12 @@
             #frequency-display {
                 font-size: 2.5em;
             }
-            .details-bar {
-                font-size: 0.75em;
-                justify-content: space-around;
-            }
-            .details-item {
-                flex-basis: auto; /* Re-adjust basis for smaller screens */
-                padding: 2px 1px;
-            }
             .knob-marker {
                 transform-origin: center 55px;
             }
         }
     </style>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 </head>
 <body>
     <div class="radio-container">
@@ -290,12 +470,28 @@
         </div>
 
         <div class="controls">
-            <div class="vfo-knob-container">
-                <div class="vfo-knob" id="vfo-knob">
-                    <div class="knob-marker" id="knob-marker"></div>
+            <div class="tuning-area" id="tuning-area">
+                <div class="vfo-knob-container" id="vfo-knob-container">
+                    <div class="vfo-knob" id="vfo-knob">
+                        <div class="knob-marker" id="knob-marker"></div>
+                    </div>
+                </div>
+                <div class="vfo-buttons-container" id="vfo-buttons-container">
+                    <button class="btn vfo-btn" id="btn-tune-down">-</button>
+                    <button class="btn vfo-btn" id="btn-tune-up">+</button>
                 </div>
             </div>
+
             <div class="control-buttons-container">
+                <div class="direct-freq-container">
+                    <input type="number" id="direct-freq-input" placeholder="Set frequency in MHz, Hz" step="0.1" />
+                    <button class="btn" id="btn-set-freq">GO</button>
+                </div>
+                <div class="freq-error-message" id="freq-error-message">
+                    <span class="freq-error-text"></span>
+                    <button class="freq-error-close-btn" id="freq-error-close">✕</button>
+                </div>
+                
                 <div class="buttons-grid">
                     <button class="btn" data-cmd="B">Band+</button>
                     <button class="btn" data-cmd="b">Band-</button>
@@ -311,13 +507,28 @@
                     <button class="btn" data-cmd="l">Light-</button>
                 </div>
                 <div class="volume-buttons">
-                    <button class="btn" data-cmd="V">Volume+</button>
-                    <button class="btn" data-cmd="v">Volume-</button>
+                    <button class="btn" data-cmd="V">Vol+</button>
+                    <button class="btn" data-cmd="v">Vol-</button>
+                    <button class="btn" id="open-settings-btn">SET</button>
                 </div>
             </div>
         </div>
     </div>
     
+    <div class="modal-overlay" id="settings-modal">
+        <div class="modal-card">
+            <h3>SYSTEM SETTINGS</h3>
+            <div class="setting-group">
+                <label for="tuning-mode-select">Tuning Control Mode</label>
+                <select id="tuning-mode-select">
+                    <option value="knob">VFO Knob (Rotary)</option>
+                    <option value="buttons">+/- Buttons</option>
+                </select>
+            </div>
+            <button class="btn" id="close-settings" style="width: 100%; margin-top: 10px; border-color: var(--btn-border); color: var(--text-color);">SAVE & EXIT</button>
+        </div>
+    </div>
+
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const freqDisplay = document.getElementById('frequency-display');
@@ -330,9 +541,20 @@
             const bwDisplay = document.getElementById('bw-display');
             const agcAttDisplay = document.getElementById('agc-att-display');
             const statusLight = document.getElementById('status-light');
+            
+            const vfoKnobContainer = document.getElementById('vfo-knob-container');
+            const vfoButtonsContainer = document.getElementById('vfo-buttons-container');
             const vfoKnob = document.getElementById('vfo-knob');
             const knobMarker = document.getElementById('knob-marker');
+            const btnTuneUp = document.getElementById('btn-tune-up');
+            const btnTuneDown = document.getElementById('btn-tune-down');
             const commandButtons = document.querySelectorAll('.btn[data-cmd]');
+
+            // Settings Modal Elements
+            const openSettingsBtn = document.getElementById('open-settings-btn');
+            const settingsModal = document.getElementById('settings-modal');
+            const closeSettings = document.getElementById('close-settings');
+            const tuningModeSelect = document.getElementById('tuning-mode-select');
 
             let isDragging = false;
             let lastY = 0;
@@ -342,6 +564,47 @@
             const KNOB_SENSITIVITY_THRESHOLD = 15;
             const maxFreqForMarkerVisuals = 300000000;
 
+            // --- Settings Logic ---
+            function loadSettings() {
+                const savedMode = localStorage.getItem('tuningMode') || 'knob';
+                tuningModeSelect.value = savedMode;
+                applyTuningMode(savedMode);
+            }
+
+            function applyTuningMode(mode) {
+                if (mode === 'buttons') {
+                    vfoKnobContainer.style.display = 'none';
+                    vfoButtonsContainer.style.display = 'flex';
+                } else {
+                    vfoKnobContainer.style.display = 'flex';
+                    vfoButtonsContainer.style.display = 'none';
+                }
+            }
+
+            openSettingsBtn.addEventListener('click', () => {
+                settingsModal.style.display = 'flex';
+            });
+
+            closeSettings.addEventListener('click', () => {
+                settingsModal.style.display = 'none';
+            });
+
+            tuningModeSelect.addEventListener('change', (e) => {
+                const selectedMode = e.target.value;
+                localStorage.setItem('tuningMode', selectedMode);
+                applyTuningMode(selectedMode);
+            });
+
+            // Close modal when clicking outside of the card
+            settingsModal.addEventListener('click', (e) => {
+                if (e.target === settingsModal) {
+                    settingsModal.style.display = 'none';
+                }
+            });
+
+            loadSettings(); // Initialize settings on load
+
+            // --- Tuning Logic ---
             function parseStep(stepStr) {
                 if (typeof stepStr !== 'string' || stepStr.length === 0) return 1000;
                 const lower = stepStr.toLowerCase();
@@ -361,6 +624,7 @@
 
             function tuneUp() {
                 sendCommand('R');
+                hideFreqError(); // Clear error when tuning with knob
                 const visualStepAngle = getVisualStepAngle(currentStepValue);
                 currentKnobRotation += visualStepAngle;
                 vfoKnob.style.transform = `rotate(${currentKnobRotation}deg)`;
@@ -368,10 +632,15 @@
 
             function tuneDown() {
                 sendCommand('r');
+                hideFreqError(); // Clear error when tuning with knob
                 const visualStepAngle = getVisualStepAngle(currentStepValue);
                 currentKnobRotation -= visualStepAngle;
                 vfoKnob.style.transform = `rotate(${currentKnobRotation}deg)`;
             }
+
+            // Bind explicitly to the new VFO buttons
+            btnTuneUp.addEventListener('click', tuneUp);
+            btnTuneDown.addEventListener('click', tuneDown);
 
             /* --- MOUSE EVENTS for VFO Knob --- */
             vfoKnob.addEventListener('mousedown', (e) => {
@@ -444,7 +713,6 @@
                 }
             });
 
-
             commandButtons.forEach(button => {
                 button.addEventListener('click', () => {
                     const cmd = button.getAttribute('data-cmd');
@@ -464,76 +732,48 @@
                 }
             }
             
-            async function fetchMonitorData() {
-                try {
-                    const response = await fetch('/api/monitor');
-                    if (!response.ok) throw new Error('Network response was not ok');
-                    const data = await response.json();
+            function updateUI(data) {
+                if (data.monitor_active) {
+                    statusLight.classList.add('active');
+                    const p = data.parsed;
+
+                    let displayFrequency = p.frequency;
                     
-                    if (data.monitor_active) {
-                        statusLight.classList.add('active');
-                        const p = data.parsed;
+                    freqDisplay.textContent = displayFrequency || 'N/A';
+                    bandDisplay.textContent = `BAND:${p.bandName || 'N/A'}`;
+                    modeDisplay.textContent = `MODE:${p.mode || 'N/A'}`;
+                    rssiDisplay.textContent = `RSSI:${p.rssi || 'N/A'}`;
+                    snrDisplay.textContent = `SNR:${p.snr || 'N/A'}`;
+                    volumeDisplay.textContent = `VOL:${p.volume !== null ? p.volume : 'N/A'}`;
+                    
+                    if (p.stepIdx) {
+                        currentStepValue = parseStep(p.stepIdx);
+                        stepDisplay.textContent = `STEP:${p.stepIdx}`;
+                    } else {
+                        stepDisplay.textContent = 'STEP:N/A';
+                    }
+                    
+                    bwDisplay.textContent = `BW:${p.bandwidthIdx || 'N/A'}`;
 
-                        // Handle VHF frequency display fix
-                        let displayFrequency = p.frequency;
-                        if (p.bandName === 'VHF' && p.frequency) {
-                            const freqNum = parseFloat(p.frequency);
-                            if (!isNaN(freqNum) && freqNum < 30) { 
-                                const correctedFreq = freqNum * 10;
-                                displayFrequency = `${correctedFreq.toFixed(1)} MHz`;
-                            }
-                        }
-                        
-                        freqDisplay.textContent = displayFrequency || 'N/A';
-                        bandDisplay.textContent = `BAND:${p.bandName || 'N/A'}`;
-                        modeDisplay.textContent = `MODE:${p.mode || 'N/A'}`;
-                        rssiDisplay.textContent = `RSSI:${p.rssi || 'N/A'}`;
-                        snrDisplay.textContent = `SNR:${p.snr || 'N/A'}`;
-                        volumeDisplay.textContent = `VOL:${p.volume !== null ? p.volume : 'N/A'}`;
-                        
-                        if (p.stepIdx) {
-                            currentStepValue = parseStep(p.stepIdx);
-                            stepDisplay.textContent = `STEP:${p.stepIdx}`;
+                    if (p.agcIdx) {
+                        const agcValue = parseInt(p.agcIdx, 10);
+                        if (agcValue === 0) {
+                            agcAttDisplay.textContent = 'AGC:ON';
                         } else {
-                            stepDisplay.textContent = 'STEP:N/A';
-                        }
-                        
-                        bwDisplay.textContent = `BW:${p.bandwidthIdx || 'N/A'}`;
-
-                        // Handle AGC/ATT display
-                        if (p.agcIdx) {
-                            const agcValue = parseInt(p.agcIdx, 10);
-                            if (agcValue === 0) {
-                                agcAttDisplay.textContent = 'AGC:ON';
-                            } else {
-                                agcAttDisplay.textContent = `ATT:${agcValue - 1}`;
-                            }
-                        } else {
-                            agcAttDisplay.textContent = 'AGC/ATT:N/A';
-                        }
-
-                        if (p.currentFrequency_raw) {
-                            const currentFreq = p.currentFrequency_raw;
-                            const newMarkerRotation = (currentFreq / maxFreqForMarkerVisuals) * 360 * 10; 
-                            knobMarker.style.transform = `rotate(${newMarkerRotation}deg)`;
+                            agcAttDisplay.textContent = `ATT:${agcValue - 1}`;
                         }
                     } else {
-                        statusLight.classList.remove('active');
-                        freqDisplay.textContent = 'Monitor Off';
-                        bandDisplay.textContent = 'BAND:N/A';
-                        modeDisplay.textContent = 'MODE:N/A';
-                        rssiDisplay.textContent = 'RSSI:N/A';
-                        snrDisplay.textContent = 'SNR:N/A';
-                        volumeDisplay.textContent = 'VOL:N/A';
-                        stepDisplay.textContent = 'STEP:N/A';
-                        bwDisplay.textContent = 'BW:N/A';
                         agcAttDisplay.textContent = 'AGC/ATT:N/A';
                     }
 
-                } catch (error) {
-                    console.error('Error fetching monitor data:', error);
+                    if (p.currentFrequency_raw) {
+                        const currentFreq = p.currentFrequency_raw;
+                        const newMarkerRotation = (currentFreq / maxFreqForMarkerVisuals) * 360 * 10; 
+                        knobMarker.style.transform = `rotate(${newMarkerRotation}deg)`;
+                    }
+                } else {
                     statusLight.classList.remove('active');
-                    freqDisplay.textContent = 'Connection Error';
+                    freqDisplay.textContent = 'Monitor Off';
                     bandDisplay.textContent = 'BAND:N/A';
                     modeDisplay.textContent = 'MODE:N/A';
                     rssiDisplay.textContent = 'RSSI:N/A';
@@ -545,9 +785,97 @@
                 }
             }
 
+            // Initialize WebSocket connection
+            const socket = io();
+            
+            socket.on('connect', () => {
+                console.log('[WebSocket] Connected to server');
+            });
+            
+            socket.on('monitor_update', (data) => {
+                console.log('[WebSocket] Received monitor update');
+                updateUI(data);
+            });
+            
+            socket.on('disconnect', () => {
+                console.log('[WebSocket] Disconnected from server');
+                statusLight.classList.remove('active');
+                freqDisplay.textContent = 'Connection Lost';
+            });
+            
+            socket.on('error', (error) => {
+                console.error('[WebSocket] Error:', error);
+                statusLight.classList.remove('active');
+                freqDisplay.textContent = 'Connection Error';
+            });
+
+            // --- Direct Frequency Input Logic ---
+            const directFreqInput = document.getElementById('direct-freq-input');
+            const btnSetFreq = document.getElementById('btn-set-freq');
+            const freqErrorMessage = document.getElementById('freq-error-message');
+            const freqErrorText = freqErrorMessage.querySelector('.freq-error-text');
+            const freqErrorClose = document.getElementById('freq-error-close');
+            let lastDisplayedFrequency = null;
+
+            function hideFreqError() {
+                freqErrorMessage.classList.remove('show');
+                lastDisplayedFrequency = null;
+            }
+
+            function showFreqError(message) {
+                freqErrorText.textContent = message;
+                freqErrorMessage.classList.add('show');
+            }
+
+            freqErrorClose.addEventListener('click', hideFreqError);
+
+            async function setDirectFrequency() {
+                const freqVal = directFreqInput.value.trim();
+                hideFreqError();
+                
+                // Ensure it's not empty and is a number
+                if (freqVal && !isNaN(freqVal)) {
+                    try {
+                        console.log('[setFreq] Sending frequency:', freqVal);
+                        const response = await fetch('/api/set_freq', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ frequency: freqVal }),
+                        });
+                        
+                        const data = await response.json();
+                        console.log('[setFreq] Response:', data);
+                        
+                        if (response.ok) {
+                            console.log('[setFreq] Success! Sent command:', data.sent);
+                            directFreqInput.value = '';
+                            directFreqInput.blur();
+                        } else {
+                            console.error('[setFreq] Failed:', data.error);
+                            showFreqError(data.error || 'Failed to set frequency');
+                        }
+                    } catch (error) {
+                        console.error('[setFreq] Exception:', error);
+                        showFreqError('Error: ' + error.message);
+                    }
+                } else {
+                    console.warn('[setFreq] Invalid input:', freqVal);
+                    showFreqError('Please enter a valid frequency in MHz or Hz');
+                }
+            }
+
+            // Trigger on GO button click
+            btnSetFreq.addEventListener('click', setDirectFrequency);
+
+            // Trigger on pressing Enter inside the input field
+            directFreqInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault(); // Prevent accidental form submissions if wrapped in a form later
+                    setDirectFrequency();
+                }
+            });
+
             sendCommand('t');
-            setInterval(fetchMonitorData, 200);
-            fetchMonitorData();
         });
     </script>
 </body>

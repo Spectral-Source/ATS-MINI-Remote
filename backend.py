@@ -3,6 +3,7 @@ import time
 import threading
 import argparse
 from flask import Flask, jsonify, request, render_template
+from flask_socketio import SocketIO, emit, join_room, leave_room
 import serial
 import serial.tools.list_ports
 
@@ -11,7 +12,40 @@ DEFAULT_BAUD = 115200
 FALLBACK_BAUD = 9600
 SERIAL_TIMEOUT = 0.1
 
+# Band definitions with frequency ranges in kHz
+BANDS = {
+    "VHF": {"min_khz": 64000, "max_khz": 108000},
+    "ALL": {"min_khz": 150, "max_khz": 30000},
+    "11M": {"min_khz": 25600, "max_khz": 26100},
+    "13M": {"min_khz": 21500, "max_khz": 21900},
+    "15M": {"min_khz": 18900, "max_khz": 19100},
+    "16M": {"min_khz": 17400, "max_khz": 18100},
+    "19M": {"min_khz": 15100, "max_khz": 15900},
+    "22M": {"min_khz": 13500, "max_khz": 13900},
+    "25M": {"min_khz": 11000, "max_khz": 13000},
+    "31M": {"min_khz": 9000, "max_khz": 11000},
+    "41M": {"min_khz": 7000, "max_khz": 9000},
+    "49M": {"min_khz": 5000, "max_khz": 7000},
+    "60M": {"min_khz": 4000, "max_khz": 5100},
+    "75M": {"min_khz": 3500, "max_khz": 4000},
+    "90M": {"min_khz": 3000, "max_khz": 3500},
+    "MW3": {"min_khz": 1700, "max_khz": 3500},
+    "MW2": {"min_khz": 495, "max_khz": 1701},
+    "MW1": {"min_khz": 150, "max_khz": 1800},
+    "160M": {"min_khz": 1800, "max_khz": 2000},
+    "80M": {"min_khz": 3500, "max_khz": 4000},
+    "40M": {"min_khz": 7000, "max_khz": 7300},
+    "30M": {"min_khz": 10000, "max_khz": 10200},
+    "20M": {"min_khz": 14000, "max_khz": 14400},
+    "17M": {"min_khz": 18000, "max_khz": 18200},
+    "15M_SSB": {"min_khz": 21000, "max_khz": 21500},
+    "12M": {"min_khz": 24800, "max_khz": 25000},
+    "10M": {"min_khz": 28000, "max_khz": 29700},
+    "CB": {"min_khz": 25000, "max_khz": 28000},
+}
+
 app = Flask(__name__)
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Globals
 ser = None
@@ -71,17 +105,18 @@ def open_serial(port=None, baud=DEFAULT_BAUD):
 def send_serial_raw(cmd, wait_lines=1, read_timeout=0.1):
     """
     Send raw cmd string to serial (no extra processing). Returns list of response lines.
-    cmd: string (we append newline)
+    cmd: string (appended with \r\n for proper termination)
     """
     global ser
     if ser is None:
         raise RuntimeError("Serial port not opened")
     with serial_lock:
         ser.reset_input_buffer()
-        if not cmd.endswith("\n"):
-            cmd_out = cmd + "\n"
+        if not cmd.endswith("\r\n"):
+            cmd_out = cmd + "\r\n"
         else:
             cmd_out = cmd
+        print(f"[SERIAL_TX] Sending: {repr(cmd_out)}")
         ser.write(cmd_out.encode())
         ser.flush()
         t0 = time.time()
@@ -98,32 +133,61 @@ def send_serial_raw(cmd, wait_lines=1, read_timeout=0.1):
                     line = repr(raw)
                 if line:
                     lines.append(line)
+                    print(f"[SERIAL_RX] Received: {repr(line)}")
                     if len(lines) >= wait_lines:
                         break
             except Exception:
                 break
         return lines
 
-def format_frequency(freq_khz, bfo_hz, mode):
+def format_frequency(freq_khz, bfo_hz, mode, band_name=""):
     try:
         if mode is None:
             mode = ""
+        if band_name is None:
+            band_name = ""
         mm = mode.upper()
+        bb = band_name.upper()
+        freq_val = int(freq_khz)
+        
+        # Check for SSB modes first (require 6 decimals in MHz with MHz.kHz.Hz format)
         if mm in ("USB", "LSB", "SSB"):
-            freq_hz = int(freq_khz) * 1000 + int(bfo_hz)
-            mhz = freq_hz / 1_000_000.0
-            return f"{mhz:.6f} MHz"
-        else:
-            mhz = int(freq_khz) / 1000.0
-            if mm == "FM":
-                return f"{mhz:.2f} MHz"
-            elif mm == "AM":
-                if int(freq_khz) < 1000:
-                    return f"{int(freq_khz)} kHz"
-                else:
-                    return f"{mhz:.3f} MHz"
+            freq_hz = freq_val * 1000 + int(bfo_hz)
+            mhz_int = freq_hz // 1_000_000
+            khz_part = (freq_hz % 1_000_000) // 1_000
+            hz_part = freq_hz % 1_000
+            return f"{mhz_int}.{khz_part:03d}.{hz_part:03d} MHz"
+        
+        # VHF/FM broadcast: device sends at 1/10 scale, so multiply by 10
+        if "VHF" in bb or (mm == "FM" and "VHF" in bb):
+            mhz = (freq_val * 10) / 1000.0
+            return f"{mhz:.2f} MHz"
+        
+        # Dynamic formatting for bands that can span kHz to MHz range
+        # Bands: ALL, MW1, MW2, MW3, FM
+        dynamic_bands = ("ALL", "MW", "FM")
+        is_dynamic_band = any(band in bb for band in dynamic_bands)
+        
+        if is_dynamic_band:
+            # Below 1000 kHz: show as kHz with 3 decimals (Hz precision)
+            if freq_val < 1000:
+                return f"{freq_val}.000 kHz"
             else:
-                return f"{mhz:.3f} MHz"
+                # 1000 kHz and above: show as MHz with MHz.kHz.Hz format
+                mhz_int = freq_val // 1000
+                khz_part = freq_val % 1000
+                hz_part = 0
+                return f"{mhz_int}.{khz_part:03d}.{hz_part:03d} MHz"
+        
+        # Other AM/FM bands in kHz range (11M, 13M, 15M, 16M, 19M, 22M, 25M, 31M, 41M, 49M, 60M, 75M, 90M, CB)
+        # Show with MHz.kHz.Hz format if >= 1000, otherwise show as kHz
+        if freq_val >= 1000:
+            mhz_int = freq_val // 1000
+            khz_part = freq_val % 1000
+            hz_part = 0
+            return f"{mhz_int}.{khz_part:03d}.{hz_part:03d} MHz"
+        else:
+            return f"{freq_val}.000 kHz"
     except Exception:
         return f"{freq_khz} (raw)"
 
@@ -156,7 +220,7 @@ def parse_monitor_line(line):
         else:
             out["voltage"] = None
         out["seqnum"] = parts[14] if len(parts) > 14 else ""
-        out["frequency"] = format_frequency(freq_khz, bfo_hz, out["mode"])
+        out["frequency"] = format_frequency(freq_khz, bfo_hz, out["mode"], out["bandName"])
         out["rssi"] = f"{out['rssi_raw']} dBuV" if out.get("rssi_raw") is not None else ""
         out["snr"] = f"{out['snr_raw']} dB" if out.get("snr_raw") is not None else ""
     except Exception as e:
@@ -187,6 +251,13 @@ def monitor_reader_thread():
                     if parsed and (parsed.get("currentFrequency_raw") or parsed.get("fw_version")):
                         monitor_parsed = parsed
                         monitor_active = True
+                        # Emit data to all connected WebSocket clients in real-time
+                        socketio.emit('monitor_update', {
+                            "parsed": parsed,
+                            "raw": line,
+                            "monitor_active": True,
+                            "monitor_requested": monitor_requested
+                        })
                     else:
                         pass
         except Exception as e:
@@ -239,6 +310,22 @@ def api_monitor():
         }
     return jsonify(data_to_return)
 
+@socketio.on('connect')
+def handle_connect():
+    """Send current state to newly connected client"""
+    with data_lock:
+        emit('monitor_update', {
+            "parsed": monitor_parsed,
+            "raw": latest_raw_line,
+            "monitor_active": monitor_active,
+            "monitor_requested": monitor_requested
+        })
+    print(f"[WebSocket] Client connected. Total active connections")
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    print("[WebSocket] Client disconnected")
+
 @app.route("/api/memory_slots", methods=["GET"])
 def api_memory_slots():
     try:
@@ -271,6 +358,76 @@ def api_screenshot():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
+@app.route("/api/set_freq", methods=["POST"])
+def api_set_freq():
+    global monitor_requested
+    data = request.get_json(force=True)
+    freq = data.get("frequency")
+    
+    print(f"[api_set_freq] Received frequency value: {freq} (type: {type(freq).__name__})")
+    
+    if not freq:
+        print("[api_set_freq] Error: No frequency provided")
+        return jsonify({"ok": False, "error": "No frequency provided"}), 400
+    
+    try:
+        # Convert to float to handle both MHz and Hz input
+        freq_val = float(freq)
+        
+        # If less than 100000, assume it's MHz and convert to Hz
+        if freq_val < 100000:
+            freq_hz = int(freq_val * 1_000_000)
+            freq_khz = freq_hz / 1000
+            print(f"[api_set_freq] Converted {freq_val} MHz to {freq_hz} Hz")
+        else:
+            # Assume it's already in Hz
+            freq_hz = int(freq_val)
+            freq_khz = freq_hz / 1000
+            print(f"[api_set_freq] Using {freq_hz} Hz (already in Hz)")
+        
+        # Get current band from monitor data
+        current_band = None
+        with data_lock:
+            current_band = monitor_parsed.get("bandName", "").upper()
+        
+        print(f"[api_set_freq] Current band: {current_band}")
+        
+        # Validate frequency against band limits
+        if current_band and current_band in BANDS:
+            band_info = BANDS[current_band]
+            min_khz = band_info["min_khz"]
+            max_khz = band_info["max_khz"]
+            
+            if freq_khz < min_khz or freq_khz > max_khz:
+                error_msg = f"Your frequency is outside {current_band} band limits ({min_khz:.0f}-{max_khz:.0f} kHz)"
+                print(f"[api_set_freq] {error_msg}")
+                return jsonify({"ok": False, "error": error_msg}), 400
+            
+            print(f"[api_set_freq] Frequency {freq_khz:.1f} kHz is within {current_band} band limits")
+        elif current_band:
+            print(f"[api_set_freq] Warning: Band '{current_band}' not found in band table, proceeding without validation")
+        
+        cmd = f"F{freq_hz}"
+        print(f"[api_set_freq] Sending command to radio: {cmd}")
+        
+        # Temporarily pause monitor to avoid interference
+        was_monitoring = monitor_requested
+        if monitor_requested:
+            print("[api_set_freq] Pausing monitor to send frequency command...")
+            time.sleep(0.1)  # Brief pause for monitor thread to settle
+        
+        # Send the command to the radio
+        lines = send_serial_raw(cmd, wait_lines=0, read_timeout=0.5)
+        print(f"[api_set_freq] Radio response: {lines}")
+        
+        return jsonify({"ok": True, "sent": cmd, "response_lines": lines})
+    except ValueError as e:
+        print(f"[api_set_freq] ValueError: {e}")
+        return jsonify({"ok": False, "error": "Invalid frequency format. Must be a number in MHz or Hz."}), 400
+    except Exception as e:
+        print(f"[api_set_freq] Exception: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
 def start_monitor_thread():
     t = threading.Thread(target=monitor_reader_thread, daemon=True)
     t.start()
@@ -291,7 +448,7 @@ def main():
         return
     start_monitor_thread()
     print("[*] Monitor reader started. You can open web UI.")
-    app.run(host=args.host, port=args.http_port, debug=False)
+    socketio.run(app, host=args.host, port=args.http_port, debug=False, allow_unsafe_werkzeug=True)
 
 if __name__ == "__main__":
 
